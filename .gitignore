@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Node
+node_modules/
+
+# Local configuration and data
+.env
+*.env.local
+askdash.local.yaml
+.faccoder/
+.askdash/
+*.sqlite
+*.db
+captures/
+langfuse-data/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Maestri canvas state
+.maestri/

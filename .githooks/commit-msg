@@ -1,0 +1,14 @@
+#!/bin/sh
+# Removes AI co-author trailers and "Generated with" footers from commit messages.
+# Enable once per clone with: git config core.hooksPath .githooks
+
+msg_file="$1"
+tmp_file="$msg_file.tmp"
+
+grep -v -i -E '^[[:space:]]*co-authored-by:.*(claude|anthropic|noreply@anthropic\.com)' "$msg_file" \
+  | grep -v -i -E 'generated with .*claude' \
+  > "$tmp_file"
+
+mv "$tmp_file" "$msg_file"
+
+python scripts/check_no_emoji.py --message "$msg_file" || exit 1

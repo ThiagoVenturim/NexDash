@@ -1,0 +1,8 @@
+#!/bin/sh
+# Blocks commits that introduce emoji characters in staged files.
+
+files=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$files" ] && exit 0
+
+# shellcheck disable=SC2086
+python scripts/check_no_emoji.py $files
