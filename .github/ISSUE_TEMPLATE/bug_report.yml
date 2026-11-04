@@ -1,0 +1,33 @@
+name: Bug report
+description: Something does not work as documented
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps or code that shows the problem.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Operating system, Python or Node version, relevant settings.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Remove secrets and personal data before pasting.
+      render: text
