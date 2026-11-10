@@ -1,6 +1,6 @@
-# Referencias e diferencial do askdash
+# Referencias e diferencial do nexdash
 
-Projetos parecidos (open source e privados), o diferencial do askdash e o que melhorar com base neles. Pesquisa de 2026-11-08; verifique cada projeto antes de usar.
+Projetos parecidos (open source e privados), o diferencial do nexdash e o que melhorar com base neles. Pesquisa de 2026-11-08; verifique cada projeto antes de usar.
 
 ## Parecidos
 
@@ -17,8 +17,8 @@ Projetos parecidos (open source e privados), o diferencial do askdash e o que me
 
 ## Nosso diferencial
 - **O LLM nunca escreve SQL livre**: cubos em YAML, plano validado por Pydantic e SQL parametrizado por allowlist. Seguranca por construcao (sem SQL injection, sem query fora do permitido).
-- **Leve e embutivel**: Python, exposto por MCP e REST, para ser o **motor de relatorios compartilhado** do portfolio (faccoder e Support Engine consomem), nao um BI monolitico.
-- **Escolha de modelo aberto/pago** via faccoder-core (mesma base do resto).
+- **Leve e embutivel**: Python, exposto por MCP e REST, para ser o **motor de relatorios compartilhado** do portfolio (nexcoder e Support Engine consomem), nao um BI monolitico.
+- **Escolha de modelo aberto/pago** via nexcoder-core (mesma base do resto).
 - **Conectores voltados ao nosso uso**: GitHub, Azure DevOps, Redmine, Jira, suporte (issues #9-#12), para relatorios de produtividade e seguranca, nao so tabelas de banco.
 
 ## O que melhorar aprendendo com eles
