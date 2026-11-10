@@ -2,9 +2,9 @@
 
 import pytest
 
-from askdash.cube import Cube, Dimension, FilterRule, Join, Metric
-from askdash.executor import SQLiteExecutor
-from askdash.plan import PlanFilter, PlanOrderBy, QueryPlan, TimeRange
+from nexdash.cube import Cube, Dimension, FilterRule, Join, Metric
+from nexdash.executor import SQLiteExecutor
+from nexdash.plan import PlanFilter, PlanOrderBy, QueryPlan, TimeRange
 
 
 @pytest.fixture

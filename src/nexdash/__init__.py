@@ -1,12 +1,12 @@
-"""askdash: dashboards and reports from natural-language questions.
+"""nexdash: dashboards and reports from natural-language questions.
 
 Questions are answered through a semantic layer of YAML cubes: the model picks
-cubes and fills a structured plan, and askdash compiles that plan into
+cubes and fills a structured plan, and nexdash compiles that plan into
 parameterized SQL. The model never writes free SQL.
 """
 
-from askdash.compiler import AllowlistError, CompilationError, CompiledQuery, SQLCompiler
-from askdash.cube import (
+from nexdash.compiler import AllowlistError, CompilationError, CompiledQuery, SQLCompiler
+from nexdash.cube import (
     AggregationType,
     Cube,
     CubeRegistry,
@@ -20,8 +20,8 @@ from askdash.cube import (
     load_cube_from_yaml,
     load_cubes,
 )
-from askdash.executor import ExecutionResult, SQLiteExecutor
-from askdash.plan import PlanFilter, PlanOrderBy, QueryPlan, TimeRange
+from nexdash.executor import ExecutionResult, SQLiteExecutor
+from nexdash.plan import PlanFilter, PlanOrderBy, QueryPlan, TimeRange
 
 __version__ = "0.1.0"
 

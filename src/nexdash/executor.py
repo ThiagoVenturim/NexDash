@@ -12,9 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from askdash.compiler import CompiledQuery, SQLCompiler
-from askdash.cube import Cube, CubeRegistry
-from askdash.plan import QueryPlan
+from nexdash.compiler import CompiledQuery, SQLCompiler
+from nexdash.cube import Cube, CubeRegistry
+from nexdash.plan import QueryPlan
 
 
 @dataclass(frozen=True)

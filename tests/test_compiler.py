@@ -2,9 +2,9 @@
 
 import pytest
 
-from askdash.compiler import AllowlistError, SQLCompiler
-from askdash.cube import Cube, Dimension, FilterRule, Join, Metric
-from askdash.plan import PlanFilter, PlanOrderBy, QueryPlan, TimeRange
+from nexdash.compiler import AllowlistError, SQLCompiler
+from nexdash.cube import Cube, Dimension, FilterRule, Join, Metric
+from nexdash.plan import PlanFilter, PlanOrderBy, QueryPlan, TimeRange
 
 
 @pytest.fixture
