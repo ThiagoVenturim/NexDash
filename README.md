@@ -59,6 +59,17 @@ for row in result:
     print(row)
 ```
 
+## Live Dashboards
+
+Agents write self-contained HTML templates while the server collects data from
+configured sources (`http`, `sql`, `csv`, `sheets`), stores secrets encrypted at rest
+with Fernet (`{{env.NAME}}`), and injects data into the page as `window.NEXDASH_DATA`
+under a strict Content-Security-Policy with `connect-src 'none'`:
+
+- **SSRF Guard**: Rejects loopback, cloud metadata (`169.254.169.254`), private networks, and single-label internal hostnames, re-validating every redirect hop and stripping credentials across hosts.
+- **SELECT-Only Guard**: Enforces read-only parameterized `SELECT` / `WITH ... SELECT` queries (or semantic `QueryPlan` compilation) and blocks `DELETE`, `DROP`, `EXEC`, `xp_*`, and multi-statement queries.
+- **Lifecycle & Tokens**: Supports scheduled refresh cadences (`never`, `hourly`, `daily`, `weekly`) with fail-safe retention of the last good dataset, 30-day expiry with renewal tokens (`renewal_token`), and SHA-256 hashed one-time edit tokens (`ed_...`).
+
 ## Development
 
 ```bash
