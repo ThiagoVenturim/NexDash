@@ -1,0 +1,19 @@
+name: customers
+source: dim_customers
+description: Customer demographic and membership attributes
+dimensions:
+  - name: customer_id
+    column: id
+    type: string
+  - name: city
+    type: string
+  - name: tier
+    type: string
+    description: Customer tier (gold, silver, bronze)
+metrics:
+  - name: customer_count
+    aggregation: count
+    description: Total number of registered customers
+filters:
+  - name: city
+  - name: tier
