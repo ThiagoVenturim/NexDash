@@ -14,8 +14,8 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.dialects import sqlite
 
-from askdash.cube import Cube, CubeRegistry
-from askdash.plan import PlanFilter, QueryPlan
+from nexdash.cube import Cube, CubeRegistry
+from nexdash.plan import PlanFilter, QueryPlan
 
 
 class CompilationError(Exception):

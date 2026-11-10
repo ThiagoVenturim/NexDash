@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from askdash.plan import PlanFilter, PlanOrderBy, QueryPlan, TimeRange
+from nexdash.plan import PlanFilter, PlanOrderBy, QueryPlan, TimeRange
 
 
 def test_valid_query_plan():

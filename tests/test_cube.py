@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from askdash.cube import (
+from nexdash.cube import (
     Cube,
     CubeRegistry,
     Dimension,

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from askdash import (
+from nexdash import (
     CubeRegistry,
     PlanFilter,
     PlanOrderBy,
