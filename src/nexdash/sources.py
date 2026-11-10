@@ -33,10 +33,10 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
-from askdash.compiler import SQLCompiler
-from askdash.cube import Cube, CubeRegistry
-from askdash.executor import SQLiteExecutor
-from askdash.plan import QueryPlan
+from nexdash.compiler import SQLCompiler
+from nexdash.cube import Cube, CubeRegistry
+from nexdash.executor import SQLiteExecutor
+from nexdash.plan import QueryPlan
 
 SOURCE_KINDS = ("http", "sql", "csv", "sheets")
 MAX_SOURCES = 5
@@ -75,8 +75,8 @@ _NUMBER_STD_RE = re.compile(r"^-?(0|[1-9]\d*)(\.\d+)?$")
 _NUMBER_BR_RE = re.compile(r"^-?(0|[1-9]\d{0,2}(\.\d{3})*|[1-9]\d*),\d+$")
 
 SECRET_MASK = "****"
-_DEFAULT_MASTER_KEY = "askdash-local-default-fernet-master-key"
-_HKDF_INFO = b"askdash-dashboard-sources-fernet-v1"
+_DEFAULT_MASTER_KEY = "nexdash-local-default-fernet-master-key"
+_HKDF_INFO = b"nexdash-dashboard-sources-fernet-v1"
 
 
 class SourceError(Exception):
@@ -128,7 +128,6 @@ def _build_fernet(secret_key: str | bytes | None = None) -> Fernet:
     """Derive a Fernet instance from a master secret key using HKDF-SHA256."""
     raw_key = (
         secret_key
-        or os.environ.get("ASKDASH_SECRET_KEY")
         or os.environ.get("NEXDASH_SECRET_KEY")
         or _DEFAULT_MASTER_KEY
     )
@@ -403,7 +402,7 @@ def normalize_source(source: dict[str, Any]) -> dict[str, Any]:
     if not SOURCE_NAME_RE.match(name):
         raise SourceValidationError(
             f"Invalid source name '{name}': use lowercase letters, digits, and underscores "
-            f"(becomes window.ASKDASH_DATA.{name or 'source'})."
+            f"(becomes window.NEXDASH_DATA.{name or 'source'})."
         )
 
     kind = str(source.get("kind") or "").strip().lower()

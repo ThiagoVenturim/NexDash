@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from askdash.cube import (
+from nexdash.cube import (
     FilterOperator,
     validate_identifier,
     validate_qualified_identifier,

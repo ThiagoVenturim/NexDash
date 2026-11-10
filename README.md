@@ -1,11 +1,13 @@
-# askdash
+# nexdash
 
 Dashboards and reports from natural-language questions, exposed over MCP and REST.
 
-askdash answers questions through a semantic layer: cubes described in YAML, a
+*(Formerly known as askdash during early development.)*
+
+nexdash answers questions through a semantic layer: cubes described in YAML, a
 structured plan validated by Pydantic, and parameterized SQL compiled through an
 allowlist. The language model never writes free SQL. Models can be open source
-(Ollama, vLLM) or paid, selected through `faccoder-core` tiers.
+(Ollama, vLLM) or paid, selected through `nexcoder-core` tiers.
 
 Status: early development.
 
@@ -22,7 +24,7 @@ the LLM only selects cubes and outputs structured parameters validated against a
 ### Example Usage
 
 ```python
-from askdash import (
+from nexdash import (
     CubeRegistry,
     PlanFilter,
     PlanOrderBy,
@@ -60,7 +62,7 @@ for row in result:
 
 Agents write self-contained HTML templates while the server collects data from
 configured sources (`http`, `sql`, `csv`, `sheets`), stores secrets encrypted at rest
-with Fernet (`{{env.NAME}}`), and injects data into the page as `window.ASKDASH_DATA`
+with Fernet (`{{env.NAME}}`), and injects data into the page as `window.NEXDASH_DATA`
 under a strict Content-Security-Policy with `connect-src 'none'`:
 
 - **SSRF Guard**: Rejects loopback, cloud metadata (`169.254.169.254`), private networks, and single-label internal hostnames, re-validating every redirect hop and stripping credentials across hosts.
@@ -80,7 +82,7 @@ python scripts/check_no_emoji.py $(git ls-files)
 
 ## Origin
 
-askdash grew out of analytical dashboard concepts originally explored in ApoIA and lochome,
+nexdash grew out of analytical dashboard concepts originally explored in ApoIA and lochome,
 re-architected as an independent open-source semantic query engine.
 
 ## License

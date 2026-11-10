@@ -7,10 +7,10 @@ from pathlib import Path
 import httpx
 import pytest
 
-from askdash.cube import CubeRegistry
-from askdash.executor import SQLiteExecutor
-from askdash.plan import PlanFilter, QueryPlan
-from askdash.sources import (
+from nexdash.cube import CubeRegistry
+from nexdash.executor import SQLiteExecutor
+from nexdash.plan import PlanFilter, QueryPlan
+from nexdash.sources import (
     HttpFetchResult,
     SourceCollectionError,
     SourceValidationError,

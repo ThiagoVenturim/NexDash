@@ -6,7 +6,7 @@ import datetime as dt
 
 import pytest
 
-from askdash.dashboards import (
+from nexdash.dashboards import (
     DASHBOARD_CSP,
     GRACE_PERIOD_DAYS,
     IDLE_DAYS,
@@ -32,8 +32,8 @@ from askdash.dashboards import (
     safe_json_for_script,
     verify_edit_token,
 )
-from askdash.executor import SQLiteExecutor
-from askdash.sources import HttpFetchResult
+from nexdash.executor import SQLiteExecutor
+from nexdash.sources import HttpFetchResult
 
 SAMPLE_HTML = """<!DOCTYPE html>
 <html>
@@ -42,7 +42,7 @@ SAMPLE_HTML = """<!DOCTYPE html>
 </head>
 <body>
   <h1>Revenue Overview</h1>
-  <script>console.log(window.ASKDASH_DATA);</script>
+  <script>console.log(window.NEXDASH_DATA);</script>
 </body>
 </html>"""
 
@@ -80,18 +80,18 @@ def test_inject_dashboard_data_places_script_before_agent_scripts_and_escapes_xs
     assert "connect-src 'none'" in rendered
 
     # Injected data script comes right after <head> and BEFORE agent's <script>
-    injected_pos = rendered.index("window.ASKDASH_DATA=")
-    agent_script_pos = rendered.index("console.log(window.ASKDASH_DATA)")
+    injected_pos = rendered.index("window.NEXDASH_DATA=")
+    agent_script_pos = rendered.index("console.log(window.NEXDASH_DATA)")
     assert injected_pos < agent_script_pos
-    assert "window.NEXDASH_DATA=window.ASKDASH_DATA" in rendered
+    assert "window.NEXDASH_META=" in rendered
 
     # Raw </script> inside JSON payload is escaped as \u003c/script\u003e
     assert "</script><script>alert(1)" not in rendered
     assert "\\u003c/script\\u003e" in safe_json_for_script("</script>")
 
     # Status footer bar is injected before </body>
-    assert 'id="askdash-status-bar"' in rendered
-    assert rendered.index('id="askdash-status-bar"') < rendered.rindex("</body>")
+    assert 'id="nexdash-status-bar"' in rendered
+    assert rendered.index('id="nexdash-status-bar"') < rendered.rindex("</body>")
 
 
 # ---------------------------------------------------------------------------

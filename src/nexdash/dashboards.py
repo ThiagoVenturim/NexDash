@@ -9,8 +9,8 @@ Lifecycle:
 Security properties:
 - Rendered pages are served under a strict Content-Security-Policy with `connect-src 'none'`.
   The browser never sees credentials and cannot make outbound network requests.
-- Data collected on the server is injected into `<head>` as `window.ASKDASH_DATA` (and
-  `window.NEXDASH_DATA`) before any agent script runs, with `<`, `>`, `&`, U+2028, and
+- Data collected on the server is injected into `<head>` as `window.NEXDASH_DATA`
+  before any agent script runs, with `<`, `>`, `&`, U+2028, and
   U+2029 escaped inside `<script>` to prevent script-breakout XSS.
 - Viewing uses an opaque `access_token`; renewal uses a separate `renewal_token` (POST);
   editing uses a one-time `edit_token` (`ed_...`) stored only as a SHA-256 hash.
@@ -31,9 +31,9 @@ from typing import Any
 
 import httpx
 
-from askdash.cube import Cube, CubeRegistry
-from askdash.executor import SQLiteExecutor
-from askdash.sources import (
+from nexdash.cube import Cube, CubeRegistry
+from nexdash.executor import SQLiteExecutor
+from nexdash.sources import (
      MAX_RESPONSE_BYTES,
     TIME_HHMM_RE,
     HttpFetcherFn,
@@ -325,10 +325,10 @@ def safe_json_for_script(value: Any) -> str:
 def _status_footer_html() -> str:
     """Return the discrete footer bar displaying data freshness and a POST refresh button."""
     return (
-        '\n<div id="askdash-status-bar" style="position:fixed;right:12px;bottom:12px;'
+        '\n<div id="nexdash-status-bar" style="position:fixed;right:12px;bottom:12px;'
         "z-index:2147483000;font:12px system-ui,sans-serif;background:rgba(23,22,21,.88);"
         'color:#F4F4F4;border-radius:8px;padding:6px 10px;display:flex;gap:8px;align-items:center"></div>\n'
-        '<script>(function(){var m=window.ASKDASH_META||{},f=document.getElementById("askdash-status-bar");'
+        '<script>(function(){var m=window.NEXDASH_META||{},f=document.getElementById("nexdash-status-bar");'
         "if(!f)return;var d=m.updated_at?new Date(m.updated_at):null,"
         't=d?("Data as of "+d.toISOString().slice(0,16).replace("T"," ")):"";'
         'if(m.last_error)t+=" | last refresh failed";f.appendChild(document.createTextNode(t));'
@@ -353,8 +353,8 @@ def inject_dashboard_data(
 
     - Injects `<meta http-equiv="Content-Security-Policy" content="...">` with `connect-src 'none'`
       (unless `inject_csp_meta=False` or a CSP meta tag is already present).
-    - Injects `window.ASKDASH_DATA` and `window.ASKDASH_META` (plus `window.NEXDASH_DATA` /
-      `window.NEXDASH_META` aliases) immediately after `<head>` before any agent script executes.
+    - Injects `window.NEXDASH_DATA` and `window.NEXDASH_META` immediately after `<head>`
+      before any agent script executes.
     - Injects the status/refresh footer bar immediately before `</body>`.
     """
     if isinstance(dataset, dict) and "sources" in dataset:
@@ -375,10 +375,8 @@ def inject_dashboard_data(
     meta_json = safe_json_for_script(merged_meta)
     script_tag = (
         f"{csp_tag}<script>"
-        f"window.ASKDASH_DATA={data_json};"
-        f"window.ASKDASH_META={meta_json};"
-        f"window.NEXDASH_DATA=window.ASKDASH_DATA;"
-        f"window.NEXDASH_META=window.ASKDASH_META;"
+        f"window.NEXDASH_DATA={data_json};"
+        f"window.NEXDASH_META={meta_json};"
         f"</script>"
     )
 
@@ -838,7 +836,7 @@ class DashboardStore:
         return new_token
 
     def publication_meta(self, dashboard: PublishedDashboard) -> dict[str, Any]:
-        """Build clock-independent metadata injected as window.ASKDASH_META."""
+        """Build clock-independent metadata injected as window.NEXDASH_META."""
         return {
             "id": dashboard.id,
             "title": dashboard.title,
