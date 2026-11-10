@@ -20,6 +20,7 @@ the LLM only selects cubes and outputs structured parameters validated against a
 2. **Query Plan (Pydantic)**: Structured consultation request containing target cube, metrics, dimensions, filters, time ranges, ordering, and limits.
 3. **Guarded SQL Compiler**: Compiles the query plan into parameterized SQL using SQLAlchemy constructs. Rejects any dimension, metric, join, or filter not in the allowlist. Filter values are always bound as parameters.
 4. **SQLite Executor**: Executes compiled queries against SQLite and returns structured records.
+5. **Managed Reports (`ReportStore`)**: Full lifecycle for analytical reports (`create_draft`, `preview`, `diff`, `publish`, `rollback`, `discard_draft`) governed by single-use, short-lived human approval codes.
 
 ### Example Usage
 
