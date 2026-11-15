@@ -45,8 +45,22 @@ def _get_dialect(name: str) -> sa.engine.interfaces.Dialect:
         from sqlalchemy.dialects import postgresql
 
         return postgresql.dialect(paramstyle="named")
-    # Default fallback to sqlite dialect with named parameters
-    return sqlite.dialect(paramstyle="named")
+    if normalized in ("mysql", "mariadb"):
+        from sqlalchemy.dialects import mysql
+
+        return mysql.dialect(paramstyle="named")
+    if normalized in ("mssql", "sqlserver", "tsql"):
+        from sqlalchemy.dialects import mssql
+
+        return mssql.dialect(paramstyle="named")
+    try:
+        from sqlalchemy.dialects import registry
+
+        dialect_cls = registry.load(normalized)
+        return dialect_cls(paramstyle="named")
+    except Exception:
+        # Default fallback to sqlite dialect with named parameters
+        return sqlite.dialect(paramstyle="named")
 
 
 def _get_table_col(table: sa.TableClause, col_name: str) -> sa.ColumnClause[Any]:

@@ -32,7 +32,7 @@ from typing import Any
 import httpx
 
 from nexdash.cube import Cube, CubeRegistry
-from nexdash.executor import SQLiteExecutor
+from nexdash.executor import DatabaseExecutor, SQLiteExecutor
 from nexdash.sources import (
      MAX_RESPONSE_BYTES,
     TIME_HHMM_RE,
@@ -541,7 +541,7 @@ class DashboardStore:
         resolver: ResolverFn | None = None,
         http_fetcher: HttpFetcherFn | None = None,
         transport: httpx.BaseTransport | None = None,
-        sql_executor: SQLiteExecutor | sqlite3.Connection | None = None,
+        sql_executor: DatabaseExecutor | SQLiteExecutor | sqlite3.Connection | Any | None = None,
         cube_registry: CubeRegistry | dict[str, Cube] | None = None,
     ) -> None:
         self.secret_key = secret_key

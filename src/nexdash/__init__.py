@@ -58,7 +58,20 @@ from nexdash.dashboards import (
     safe_json_for_script,
     verify_edit_token,
 )
-from nexdash.executor import ExecutionResult, SQLiteExecutor
+from nexdash.db import (
+    check_database_connection,
+    create_database_engine,
+    get_db_url,
+    init_db_schema,
+    sanitize_db_url,
+)
+from nexdash.executor import (
+    DatabaseExecutor,
+    ExecutionResult,
+    SQLAlchemyExecutor,
+    SQLiteExecutor,
+    get_executor,
+)
 from nexdash.plan import PlanFilter, PlanOrderBy, QueryPlan, TimeRange
 from nexdash.reports import (
     ApprovalCode,
@@ -156,6 +169,7 @@ __all__ = [
     "DashboardNotRenewableError",
     "DashboardStore",
     "DashboardValidationError",
+    "DatabaseExecutor",
     "DiffChangeType",
     "DiffEntry",
     "Dimension",
@@ -189,6 +203,7 @@ __all__ = [
     "ReportVersion",
     "SQLCompiler",
     "SQLGuardError",
+    "SQLAlchemyExecutor",
     "SQLiteExecutor",
     "SSRFError",
     "SourceCollectionError",
@@ -200,12 +215,14 @@ __all__ = [
     "bind_runtime_parameters",
     "build_csp_headers",
     "can_refresh_now",
+    "check_database_connection",
     "check_ssrf_host",
     "collect_recipe_data",
     "collect_single_source",
     "compute_charts_from_rows",
     "compute_new_expiry",
     "compute_spec_diff",
+    "create_database_engine",
     "days_remaining",
     "decrypt_secrets",
     "due_for_refresh",
@@ -216,9 +233,12 @@ __all__ = [
     "fetch_url_guarded",
     "generate_edit_token",
     "generate_report_narrative",
+    "get_db_url",
+    "get_executor",
     "google_sheets_csv_url",
     "hash_approval_code",
     "hash_edit_token",
+    "init_db_schema",
     "inject_dashboard_data",
     "load_cube_from_yaml",
     "load_cubes",
@@ -232,6 +252,7 @@ __all__ = [
     "parse_csv_bytes",
     "preview_recipe_sources",
     "safe_json_for_script",
+    "sanitize_db_url",
     "substitute_secrets",
     "summarize_sources",
     "validate_secret_refs",

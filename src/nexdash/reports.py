@@ -18,6 +18,7 @@ import difflib
 import hashlib
 import hmac
 import json
+import os
 import re
 import secrets
 import sqlite3
@@ -26,6 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+import sqlalchemy as sa
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from nexdash.compiler import AllowlistError, CompilationError, SQLCompiler
@@ -35,7 +37,8 @@ from nexdash.cube import (
     validate_identifier,
     validate_qualified_identifier,
 )
-from nexdash.executor import SQLiteExecutor
+from nexdash.db import create_database_engine, init_db_schema
+from nexdash.executor import DatabaseExecutor, SQLiteExecutor
 from nexdash.plan import QueryPlan, TimeRange
 
 # Unambiguous human-readable alphabet (omits 0, O, 1, I, L)
@@ -787,6 +790,42 @@ def generate_report_narrative(
 # ---------------------------------------------------------------------------
 
 
+class _CursorAdapter:
+    """Adapts row results from SQLAlchemy to a dict-accessible cursor-like structure."""
+
+    def __init__(self, rows: list[dict[str, Any]], rowcount: int) -> None:
+        self._rows = rows
+        self.rowcount = rowcount
+
+    def fetchone(self) -> dict[str, Any] | None:
+        return self._rows[0] if self._rows else None
+
+    def fetchall(self) -> list[dict[str, Any]]:
+        return list(self._rows)
+
+
+class _EngineConnectionAdapter:
+    """Adapts a SQLAlchemy engine to provide a simple execute/commit interface."""
+
+    def __init__(self, engine: sa.Engine) -> None:
+        self.engine = engine
+
+    def execute(self, sql: str, params: dict[str, Any] | None = None) -> _CursorAdapter:
+        with self.engine.begin() as conn:
+            stmt = sa.text(sql)
+            res = conn.execute(stmt, params or {})
+            if res.returns_rows:
+                rows = [dict(r) for r in res.mappings().all()]
+                return _CursorAdapter(rows, res.rowcount)
+            return _CursorAdapter([], res.rowcount)
+
+    def commit(self) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+
 class ReportStore:
     """Manages report drafts, previews, diffs, publications, rollbacks, and approval codes.
 
@@ -797,69 +836,98 @@ class ReportStore:
 
     def __init__(
         self,
-        database: sqlite3.Connection | str | Path = ":memory:",
+        database: sa.Engine | sqlite3.Connection | str | Path | None = None,
         *,
         registry: CubeRegistry | None = None,
-        executor: SQLiteExecutor | None = None,
+        executor: DatabaseExecutor | SQLiteExecutor | None = None,
         compiler: SQLCompiler | None = None,
     ) -> None:
         self.registry = registry
         self.executor = executor
-        self.compiler = compiler or (executor.compiler if executor else SQLCompiler(default_dialect="sqlite"))
+        self._engine: sa.Engine | None = None
+        self._sqlite_conn: sqlite3.Connection | None = None
         self._owns_connection = False
 
-        if isinstance(database, sqlite3.Connection):
+        if isinstance(database, sa.Engine):
+            self._engine = database
+            self.connection: Any = _EngineConnectionAdapter(self._engine)
+        elif isinstance(database, sqlite3.Connection):
+            self._sqlite_conn = database
             self.connection = database
+            self.connection.row_factory = sqlite3.Row
         else:
-            self.connection = sqlite3.connect(str(database))
-            self._owns_connection = True
+            db_target = str(database) if database is not None else (os.environ.get("DB_URL") or ":memory:")
+            if "://" in db_target and not db_target.startswith("sqlite://"):
+                self._engine = create_database_engine(db_target)
+                self.connection = _EngineConnectionAdapter(self._engine)
+                self._owns_connection = True
+            elif db_target.startswith("sqlite://"):
+                self._engine = create_database_engine(db_target)
+                self.connection = _EngineConnectionAdapter(self._engine)
+                self._owns_connection = True
+            else:
+                self._sqlite_conn = sqlite3.connect(db_target)
+                self.connection = self._sqlite_conn
+                self.connection.row_factory = sqlite3.Row
+                self._owns_connection = True
 
-        self.connection.row_factory = sqlite3.Row
+        default_dialect = self._engine.dialect.name if self._engine is not None else "sqlite"
+        self.compiler = compiler or (
+            executor.compiler if executor else SQLCompiler(default_dialect=default_dialect)
+        )
         self._init_schema()
 
     def _init_schema(self) -> None:
-        self.connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS nexdash_approval_codes (
-                id TEXT PRIMARY KEY,
-                code_hash TEXT NOT NULL UNIQUE,
-                created_by TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                expires_at TEXT NOT NULL,
-                used_at TEXT,
-                used_for TEXT
-            );
+        if self._engine is not None:
+            init_db_schema(self._engine)
+            return
 
-            CREATE TABLE IF NOT EXISTS nexdash_reports (
-                key TEXT PRIMARY KEY,
-                published_version INTEGER,
-                published_spec_json TEXT,
-                draft_spec_json TEXT,
-                draft_updated_at TEXT,
-                draft_author TEXT,
-                draft_note TEXT NOT NULL DEFAULT ''
-            );
+        if self._sqlite_conn is not None:
+            self._sqlite_conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS nexdash_approval_codes (
+                    id TEXT PRIMARY KEY,
+                    code_hash TEXT NOT NULL UNIQUE,
+                    created_by TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    used_at TEXT,
+                    used_for TEXT
+                );
 
-            CREATE TABLE IF NOT EXISTS nexdash_report_versions (
-                key TEXT NOT NULL,
-                version INTEGER NOT NULL,
-                spec_json TEXT NOT NULL,
-                published_at TEXT NOT NULL,
-                published_by TEXT NOT NULL,
-                approval_code_id TEXT NOT NULL,
-                note TEXT NOT NULL DEFAULT '',
-                diff_summary TEXT NOT NULL DEFAULT '',
-                rollback_from INTEGER,
-                PRIMARY KEY (key, version)
-            );
-            """
-        )
-        self.connection.commit()
+                CREATE TABLE IF NOT EXISTS nexdash_reports (
+                    key TEXT PRIMARY KEY,
+                    published_version INTEGER,
+                    published_spec_json TEXT,
+                    draft_spec_json TEXT,
+                    draft_updated_at TEXT,
+                    draft_author TEXT,
+                    draft_note TEXT NOT NULL DEFAULT ''
+                );
+
+                CREATE TABLE IF NOT EXISTS nexdash_report_versions (
+                    key TEXT NOT NULL,
+                    version INTEGER NOT NULL,
+                    spec_json TEXT NOT NULL,
+                    published_at TEXT NOT NULL,
+                    published_by TEXT NOT NULL,
+                    approval_code_id TEXT NOT NULL,
+                    note TEXT NOT NULL DEFAULT '',
+                    diff_summary TEXT NOT NULL DEFAULT '',
+                    rollback_from INTEGER,
+                    PRIMARY KEY (key, version)
+                );
+                """
+            )
+            self._sqlite_conn.commit()
 
     def close(self) -> None:
-        """Close the store's SQLite connection if owned by this instance."""
-        if self._owns_connection and self.connection:
-            self.connection.close()
+        """Close the store's connection or engine if owned by this instance."""
+        if self._owns_connection:
+            if self._sqlite_conn:
+                self._sqlite_conn.close()
+            if self._engine:
+                self._engine.dispose()
 
     def __enter__(self) -> ReportStore:
         return self
@@ -1451,7 +1519,7 @@ class ReportStore:
         params: dict[str, Any] | None = None,
         operations: list[EditOperation | dict[str, Any]] | None = None,
         spec: ReportSpec | dict[str, Any] | None = None,
-        executor: SQLiteExecutor | None = None,
+        executor: DatabaseExecutor | SQLiteExecutor | None = None,
         registry: CubeRegistry | None = None,
         sample_limit: int = DEFAULT_PREVIEW_SAMPLE_LIMIT,
         include_narrative: bool = False,
@@ -1466,9 +1534,14 @@ class ReportStore:
         if active_registry is None:
             raise ReportValidationError("preview requires a CubeRegistry (either on ReportStore or passed to preview)")
         if active_executor is None:
-            raise ReportValidationError(
-                "preview requires a SQLiteExecutor (either on ReportStore or passed to preview)"
-            )
+            if self._engine is not None:
+                active_executor = DatabaseExecutor(self._engine, compiler=self.compiler)
+            elif self._sqlite_conn is not None:
+                active_executor = SQLiteExecutor(self._sqlite_conn, compiler=self.compiler)
+            else:
+                raise ReportValidationError(
+                    "preview requires a SQLiteExecutor or DatabaseExecutor (either on ReportStore or passed to preview)"
+                )
 
         source_state: PreviewSourceState
         if spec is not None:
@@ -1492,12 +1565,13 @@ class ReportStore:
             raise ReportValidationError(f"Cube '{effective_plan.cube}' not found in registry")
         cube = active_registry.get(effective_plan.cube)
 
+        target_dialect = getattr(active_executor, "dialect_name", "sqlite")
         try:
             compiled = self.compiler.compile(
                 effective_plan,
                 cube,
                 registry=active_registry,
-                dialect="sqlite",
+                dialect=target_dialect,
             )
         except (AllowlistError, CompilationError) as exc:
             raise ReportValidationError(f"Preview query compilation failed: {exc}") from exc

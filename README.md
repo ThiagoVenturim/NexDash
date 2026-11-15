@@ -19,7 +19,7 @@ the LLM only selects cubes and outputs structured parameters validated against a
 1. **Cube Models (YAML)**: Analytical entities declaring tables/views, dimensions, metrics with aggregations, allowed joins, and allowed filters.
 2. **Query Plan (Pydantic)**: Structured consultation request containing target cube, metrics, dimensions, filters, time ranges, ordering, and limits.
 3. **Guarded SQL Compiler**: Compiles the query plan into parameterized SQL using SQLAlchemy constructs. Rejects any dimension, metric, join, or filter not in the allowlist. Filter values are always bound as parameters.
-4. **SQLite Executor**: Executes compiled queries against SQLite and returns structured records.
+4. **Pluggable Database Executor**: Executes compiled queries against SQLite (default) or any external database (PostgreSQL, MySQL, Microsoft SQL Server, ODBC) using SQLAlchemy engines.
 5. **Managed Reports (`ReportStore`)**: Full lifecycle for analytical reports (`create_draft`, `preview`, `diff`, `publish`, `rollback`, `discard_draft`) governed by single-use, short-lived human approval codes.
 
 ### Example Usage
@@ -27,11 +27,12 @@ the LLM only selects cubes and outputs structured parameters validated against a
 ```python
 from nexdash import (
     CubeRegistry,
+    DatabaseExecutor,
     PlanFilter,
     PlanOrderBy,
     QueryPlan,
-    SQLiteExecutor,
     TimeRange,
+    get_executor,
 )
 
 # 1. Load cubes
@@ -51,13 +52,22 @@ plan = QueryPlan(
     limit=10,
 )
 
-# 3. Execute with safety allowlists and parameter binding
-executor = SQLiteExecutor("orders.db")
+# 3. Execute with safety allowlists and parameter binding (SQLite default or via DB_URL)
+executor = get_executor()  # or DatabaseExecutor("postgresql+psycopg://...")
 result = executor.execute_plan(plan, orders_cube, registry=registry)
 
 for row in result:
     print(row)
 ```
+
+## Pluggable Database & Containers
+
+NexDash runs zero-config on SQLite and seamlessly adapts to external databases:
+
+- **Pluggable Database**: Configure `DB_URL` (e.g. `postgresql+psycopg://...`, `mysql+pymysql://...`, or `mssql+pyodbc://...`). See [docs/DATABASE.md](docs/DATABASE.md) for full instructions and driver extras.
+- **Containers**: Multi-arch `Dockerfile` and `docker-compose.yml` (with app and optional PostgreSQL).
+- **Kubernetes**: Production manifests located in `k8s/` (`deployment.yaml`, `service.yaml`, `configmap.yaml`, `secret.yaml`).
+- **Cross-Platform Scripts**: `scripts/run.ps1` for Windows PowerShell and `scripts/run.sh` for Linux/macOS.
 
 ## Live Dashboards
 
