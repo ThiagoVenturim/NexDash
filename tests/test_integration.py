@@ -96,6 +96,66 @@ def test_end_to_end_semantic_pipeline():
     executor.close()
 
 
+def test_end_to_end_with_database_executor():
+    # End-to-end pipeline running on pluggable DatabaseExecutor (SQLite or DB_URL if set)
+    cubes_dir = Path(__file__).parent.parent / "examples" / "cubes"
+    registry = CubeRegistry.from_directory(cubes_dir)
+    orders_cube = registry.get("orders")
+
+    from nexdash import DatabaseExecutor, get_db_url
+
+    db_url = get_db_url()
+    executor = DatabaseExecutor(db_url)
+
+    # Clean setup and DDL compatible with SQLite, PostgreSQL, and MySQL
+    executor.execute_script(
+        """
+        DROP TABLE IF EXISTS fact_orders;
+        DROP TABLE IF EXISTS dim_customers;
+
+        CREATE TABLE dim_customers (
+            id VARCHAR(64) PRIMARY KEY,
+            city VARCHAR(64),
+            tier VARCHAR(64)
+        );
+
+        CREATE TABLE fact_orders (
+            order_id VARCHAR(64) PRIMARY KEY,
+            customer_id VARCHAR(64),
+            status VARCHAR(64),
+            amount NUMERIC,
+            order_date VARCHAR(64)
+        );
+
+        INSERT INTO dim_customers (id, city, tier) VALUES
+            ('c1', 'Porto Alegre', 'gold'),
+            ('c2', 'Florianopolis', 'silver');
+
+        INSERT INTO fact_orders (order_id, customer_id, status, amount, order_date) VALUES
+            ('o1', 'c1', 'completed', 120.0, '2026-05-01'),
+            ('o2', 'c1', 'completed', 180.0, '2026-05-03'),
+            ('o3', 'c2', 'completed', 250.0, '2026-05-15'),
+            ('o4', 'c2', 'cancelled', 70.0, '2026-05-20');
+        """
+    )
+
+    plan = QueryPlan(
+        cube="orders",
+        dimensions=["status"],
+        metrics=["order_count", "total_revenue"],
+        filters=[PlanFilter(field="status", operator="eq", value="completed")],
+        order_by=[PlanOrderBy(field="total_revenue", direction="desc")],
+    )
+
+    result = executor.execute_plan(plan, orders_cube, registry=registry)
+    assert len(result) == 1
+    assert result[0]["status"] == "completed"
+    assert result[0]["order_count"] == 3
+    assert float(result[0]["total_revenue"]) == 550.0
+
+    executor.close()
+
+
 def pytest_approx(val, abs=1e-4):
     from pytest import approx
 
