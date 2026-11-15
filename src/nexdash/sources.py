@@ -29,13 +29,15 @@ from typing import Any
 from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit, urlunsplit
 
 import httpx
+import sqlalchemy as sa
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from nexdash.compiler import SQLCompiler
 from nexdash.cube import Cube, CubeRegistry
-from nexdash.executor import SQLiteExecutor
+from nexdash.db import create_database_engine
+from nexdash.executor import DatabaseExecutor, SQLiteExecutor
 from nexdash.plan import QueryPlan
 
 SOURCE_KINDS = ("http", "sql", "csv", "sheets")
@@ -918,7 +920,7 @@ def _collect_sql_source(
     source: dict[str, Any],
     secrets_map: dict[str, str],
     *,
-    sql_executor: SQLiteExecutor | sqlite3.Connection | None = None,
+    sql_executor: DatabaseExecutor | SQLiteExecutor | sqlite3.Connection | sa.Engine | None = None,
     cube_registry: CubeRegistry | dict[str, Cube] | None = None,
 ) -> list[dict[str, Any]]:
     max_rows = int(source.get("max_rows") or DEFAULT_MAX_ROWS)
@@ -938,16 +940,24 @@ def _collect_sql_source(
         if cube is None:
             raise SourceCollectionError(f"Cube '{plan.cube}' not found in registry.")
         reg_obj = cube_registry if isinstance(cube_registry, CubeRegistry) else None
-        if isinstance(sql_executor, SQLiteExecutor):
-            exec_res = sql_executor.execute_plan(plan, cube, registry=reg_obj)
+
+        active_exec = sql_executor
+        if active_exec is None and (os.environ.get("DB_URL") or os.environ.get("NEXDASH_DB_URL")):
+            active_exec = DatabaseExecutor()
+
+        if isinstance(active_exec, (DatabaseExecutor, SQLiteExecutor)):
+            exec_res = active_exec.execute_plan(plan, cube, registry=reg_obj)
             return [{k: _json_safe_value(v) for k, v in row.items()} for row in exec_res.rows[:max_rows]]
-        if isinstance(sql_executor, sqlite3.Connection):
+        if isinstance(active_exec, sa.Engine):
+            exec_res = DatabaseExecutor(active_exec).execute_plan(plan, cube, registry=reg_obj)
+            return [{k: _json_safe_value(v) for k, v in row.items()} for row in exec_res.rows[:max_rows]]
+        if isinstance(active_exec, sqlite3.Connection):
             compiled = SQLCompiler(default_dialect="sqlite").compile(
                 plan, cube, registry=reg_obj, dialect="sqlite"
             )
-            return _execute_sqlite_bound(sql_executor, compiled.sql, compiled.params, max_rows)
+            return _execute_sqlite_bound(active_exec, compiled.sql, compiled.params, max_rows)
         raise SourceCollectionError(
-            f"SQL source '{source['name']}' requires a SQLiteExecutor or sqlite3.Connection."
+            f"SQL source '{source['name']}' requires a DatabaseExecutor, SQLiteExecutor, or active database engine."
         )
 
     # 2. Guarded read-only SELECT execution with bound parameters
@@ -955,16 +965,44 @@ def _collect_sql_source(
     bound_params = substitute_secrets(source.get("params") or {}, secrets_map)
     conn_cfg = substitute_secrets(source.get("connection") or {}, secrets_map)
 
+    if isinstance(sql_executor, DatabaseExecutor):
+        exec_res = sql_executor.execute_sql(validated_sql, bound_params)
+        return [{k: _json_safe_value(v) for k, v in row.items()} for row in exec_res.rows[:max_rows]]
+    if isinstance(sql_executor, sa.Engine):
+        with sql_executor.connect() as conn:
+            res = conn.execute(sa.text(validated_sql), bound_params)
+            return [{k: _json_safe_value(v) for k, v in row.items()} for row in res.mappings().fetchmany(max_rows)]
     if isinstance(sql_executor, SQLiteExecutor):
         return _execute_sqlite_bound(sql_executor.connection, validated_sql, bound_params, max_rows)
     if isinstance(sql_executor, sqlite3.Connection):
         return _execute_sqlite_bound(sql_executor, validated_sql, bound_params, max_rows)
+
+    # Check connection parameters (URL / DSN / path)
+    db_url = conn_cfg.get("url") or conn_cfg.get("dsn")
+    if db_url and "://" in str(db_url):
+        engine = create_database_engine(str(db_url))
+        try:
+            with engine.connect() as conn:
+                res = conn.execute(sa.text(validated_sql), bound_params)
+                return [{k: _json_safe_value(v) for k, v in row.items()} for row in res.mappings().fetchmany(max_rows)]
+        finally:
+            engine.dispose()
 
     db_path = conn_cfg.get("database") or conn_cfg.get("path")
     if db_path:
         with sqlite3.connect(str(db_path)) as conn:
             conn.row_factory = sqlite3.Row
             return _execute_sqlite_bound(conn, validated_sql, bound_params, max_rows)
+
+    env_db = os.environ.get("DB_URL") or os.environ.get("NEXDASH_DB_URL")
+    if env_db:
+        engine = create_database_engine(env_db)
+        try:
+            with engine.connect() as conn:
+                res = conn.execute(sa.text(validated_sql), bound_params)
+                return [{k: _json_safe_value(v) for k, v in row.items()} for row in res.mappings().fetchmany(max_rows)]
+        finally:
+            engine.dispose()
 
     raise SourceCollectionError(
         f"SQL source '{source['name']}' has no active database connection or executor."
@@ -1000,7 +1038,7 @@ def collect_single_source(
     resolver: ResolverFn | None = None,
     http_fetcher: HttpFetcherFn | None = None,
     transport: httpx.BaseTransport | None = None,
-    sql_executor: SQLiteExecutor | sqlite3.Connection | None = None,
+    sql_executor: DatabaseExecutor | SQLiteExecutor | sqlite3.Connection | sa.Engine | None = None,
     cube_registry: CubeRegistry | dict[str, Cube] | None = None,
 ) -> Any:
     """Collect data from a single normalized source definition."""
@@ -1068,7 +1106,7 @@ def collect_recipe_data(
     resolver: ResolverFn | None = None,
     http_fetcher: HttpFetcherFn | None = None,
     transport: httpx.BaseTransport | None = None,
-    sql_executor: SQLiteExecutor | sqlite3.Connection | None = None,
+    sql_executor: DatabaseExecutor | SQLiteExecutor | sqlite3.Connection | sa.Engine | None = None,
     cube_registry: CubeRegistry | dict[str, Cube] | None = None,
 ) -> dict[str, Any]:
     """Collect all sources in a recipe atomically (all-or-nothing).
