@@ -20,6 +20,17 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.6"]
+postgres = ["psycopg>=3.1"]
+mysql = ["pymysql>=1.1"]
+mssql = ["pyodbc>=5.0"]
+all-dbs = [
+  "psycopg>=3.1",
+  "pymysql>=1.1",
+  "pyodbc>=5.0",
+]
+
+[project.scripts]
+nexdash = "nexdash.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/nexdash"]
