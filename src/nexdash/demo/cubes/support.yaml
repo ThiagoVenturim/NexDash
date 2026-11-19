@@ -1,0 +1,51 @@
+name: support
+source: demo_tickets
+description: Synthetic support tickets with priority, status, resolution time and satisfaction
+dimensions:
+  - name: opened_date
+    type: date
+    description: Date the ticket was opened (YYYY-MM-DD)
+  - name: month
+    type: string
+    description: Month the ticket was opened (YYYY-MM)
+  - name: priority
+    type: string
+    description: Ticket priority (low, medium, high, urgent)
+  - name: category
+    type: string
+    description: Ticket category (billing, bug, access, question)
+  - name: status
+    type: string
+    description: Ticket status (open, pending, resolved)
+  - name: channel
+    type: string
+    description: Contact channel (email, chat, phone)
+metrics:
+  - name: ticket_count
+    aggregation: count
+    description: Number of tickets
+  - name: avg_resolution_hours
+    aggregation: avg
+    column: resolution_hours
+    description: Average hours to resolve (resolved tickets only)
+  - name: max_resolution_hours
+    aggregation: max
+    column: resolution_hours
+    description: Longest resolution time in hours
+  - name: avg_csat
+    aggregation: avg
+    column: csat
+    description: Average customer satisfaction score from 1 to 5
+filters:
+  - name: opened_date
+    operators: [eq, gte, lte, between]
+  - name: month
+    operators: [eq, in, gte, lte]
+  - name: priority
+    operators: [eq, neq, in, not_in]
+  - name: category
+    operators: [eq, neq, in, not_in]
+  - name: status
+    operators: [eq, neq, in, not_in]
+  - name: channel
+    operators: [eq, neq, in, not_in]

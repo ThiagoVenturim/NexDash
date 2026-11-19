@@ -1,0 +1,46 @@
+name: sales
+source: demo_sales
+description: Synthetic sales transactions by region, channel and product
+dimensions:
+  - name: sale_date
+    type: date
+    description: Date of the sale (YYYY-MM-DD)
+  - name: month
+    type: string
+    description: Month of the sale (YYYY-MM)
+  - name: region
+    type: string
+    description: Sales region (north, south, east, west)
+  - name: channel
+    type: string
+    description: Sales channel (online, store, partner)
+  - name: product
+    type: string
+    description: Product name
+metrics:
+  - name: sale_count
+    aggregation: count
+    description: Number of sales
+  - name: units_sold
+    aggregation: sum
+    column: quantity
+    description: Units sold
+  - name: revenue
+    aggregation: sum
+    column: amount
+    description: Total revenue
+  - name: avg_ticket
+    aggregation: avg
+    column: amount
+    description: Average revenue per sale
+filters:
+  - name: sale_date
+    operators: [eq, gte, lte, between]
+  - name: month
+    operators: [eq, in, gte, lte]
+  - name: region
+    operators: [eq, neq, in, not_in]
+  - name: channel
+    operators: [eq, neq, in, not_in]
+  - name: product
+    operators: [eq, neq, in, not_in, like]
