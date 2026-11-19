@@ -6,13 +6,17 @@ Public:
 - ``GET /health``, ``GET /api/health``: liveness and database backend (password masked).
 - ``GET /``, ``GET /ui/...``: static web UI (no data; it calls the API with the token).
 
-Protected by the API token (``Authorization: Bearer`` or ``X-API-Key``):
-- ``GET /api/cubes``: list cubes.
-- ``GET /api/cubes/<name>``: describe one cube.
-- ``POST /api/plan``: run ``{"plan": QueryPlan}`` through the allowlist compiler.
-- ``POST /api/ask``: ``{"question": "..."}`` answered by the configured model tier.
-- ``POST /api/query``: read-only parameterized ``SELECT`` (guarded).
-- ``POST /mcp``: MCP JSON-RPC 2.0 messages.
+Protected by a token (``Authorization: Bearer`` or ``X-API-Key``) holding the scope in brackets:
+- ``GET /api/cubes``: list cubes [semantic:read].
+- ``GET /api/cubes/<name>``: describe one cube [semantic:read].
+- ``POST /api/plan``: run ``{"plan": QueryPlan}`` through the allowlist compiler [semantic:query].
+- ``POST /api/ask``: ``{"question": "..."}`` answered by the configured model tier [semantic:ask].
+- ``POST /api/query``: read-only parameterized ``SELECT`` (guarded) [admin].
+- ``GET /api/reports/models``: list report models [reports:list].
+- ``GET /api/reports/models/<name>``: describe one report model [reports:list].
+- ``POST /api/reports/run``: run a model with parameters; JSON data and dashboard [reports:run].
+- ``POST /api/reports/dashboard``: same request; answers the HTML dashboard itself [reports:run].
+- ``POST /mcp``: MCP JSON-RPC 2.0 messages (any valid token; each tool checks its scope).
 
 ``nexdash --mcp`` serves the MCP tools over stdio instead of starting HTTP.
 """
@@ -32,9 +36,21 @@ from typing import Any
 from urllib.parse import unquote
 
 from nexdash import __version__
-from nexdash.auth import ALLOW_ANONYMOUS_ENV, TOKEN_ENV, TokenAuth
+from nexdash.auth import (
+    ALLOW_ANONYMOUS_ENV,
+    SCOPE_ADMIN,
+    SCOPE_REPORTS_LIST,
+    SCOPE_REPORTS_RUN,
+    SCOPE_SEMANTIC_ASK,
+    SCOPE_SEMANTIC_QUERY,
+    SCOPE_SEMANTIC_READ,
+    TOKEN_ENV,
+    Principal,
+    TokenAuth,
+)
 from nexdash.cube import CubeRegistry, load_cubes
 from nexdash.db import get_db_url, sanitize_db_url
+from nexdash.engine import DASHBOARD_CONTENT_TYPE, REPORT_DASHBOARD_CSP, ReportEngine
 from nexdash.executor import DatabaseExecutor, SQLiteExecutor, get_executor
 from nexdash.mcp_server import MCPServer
 from nexdash.planner import DEFAULT_TIER, TIERS, PlanGenerator
@@ -86,21 +102,39 @@ class NexDashRequestHandler(BaseHTTPRequestHandler):
         elif path in _STATIC_FILES:
             self._send_static(*_STATIC_FILES[path])
         elif path == "/api/cubes":
-            if self._authorize():
+            if self._authorize(SCOPE_SEMANTIC_READ):
                 self._with_service(lambda service: {"cubes": service.list_cubes()})
         elif path.startswith("/api/cubes/"):
-            if self._authorize():
+            if self._authorize(SCOPE_SEMANTIC_READ):
                 name = unquote(path[len("/api/cubes/") :])
                 self._with_service(lambda service: service.describe_cube(name))
+        elif path == "/api/reports/models":
+            if self._authorize(SCOPE_REPORTS_LIST):
+                self._with_engine(lambda engine: {"models": engine.list_models()})
+        elif path.startswith("/api/reports/models/"):
+            if self._authorize(SCOPE_REPORTS_LIST):
+                name = unquote(path[len("/api/reports/models/") :])
+                self._with_engine(lambda engine: engine.describe_model(name))
         else:
             self._send_json({"error": "Not Found"}, status=HTTPStatus.NOT_FOUND)
 
+    _POST_SCOPES: dict[str, str | None] = {
+        "/api/query": SCOPE_ADMIN,
+        "/query": SCOPE_ADMIN,
+        "/api/plan": SCOPE_SEMANTIC_QUERY,
+        "/api/ask": SCOPE_SEMANTIC_ASK,
+        "/api/reports/run": SCOPE_REPORTS_RUN,
+        "/api/reports/dashboard": SCOPE_REPORTS_RUN,
+        "/mcp": None,
+    }
+
     def do_POST(self) -> None:  # noqa: N802
         path = self._route_path()
-        if path not in ("/api/query", "/query", "/api/plan", "/api/ask", "/mcp"):
+        if path not in self._POST_SCOPES:
             self._send_json({"error": "Not Found"}, status=HTTPStatus.NOT_FOUND)
             return
-        if not self._authorize():
+        principal = self._authorize(self._POST_SCOPES[path])
+        if principal is None:
             return
         data = self._read_json_body()
         if data is None:
@@ -111,8 +145,12 @@ class NexDashRequestHandler(BaseHTTPRequestHandler):
             self._with_service(lambda service: service.run_plan(_field(data, "plan")))
         elif path == "/api/ask":
             self._with_service(lambda service: service.ask(_field(data, "question")))
+        elif path == "/api/reports/run":
+            self._with_engine(lambda engine: engine.run(data))
+        elif path == "/api/reports/dashboard":
+            self._handle_report_dashboard(data)
         else:
-            self._handle_mcp(data)
+            self._handle_mcp(data, principal)
 
     # Handlers
 
@@ -154,19 +192,65 @@ class NexDashRequestHandler(BaseHTTPRequestHandler):
             return
         self._send_json({"columns": result.columns, "rows": result.rows, "row_count": result.row_count})
 
-    def _handle_mcp(self, data: Any) -> None:
+    def _handle_mcp(self, data: Any, principal: Principal | None) -> None:
         mcp = getattr(self.server, "mcp", None)
         if mcp is None:
             service = getattr(self.server, "service", None)
             if service is None:
                 self._send_json({"error": "No cubes are configured"}, status=HTTPStatus.SERVICE_UNAVAILABLE)
                 return
-            mcp = MCPServer(service)
-        reply = mcp.handle(data)
+            mcp = MCPServer(service, getattr(self.server, "engine", None))
+        reply = mcp.handle(data, principal)
         if reply is None:
             self._send_empty(HTTPStatus.ACCEPTED)
             return
         self._send_json(reply)
+
+    def _handle_report_dashboard(self, data: Any) -> None:
+        engine: ReportEngine | None = getattr(self.server, "engine", None)
+        if engine is None:
+            self._send_engine_disabled()
+            return
+        try:
+            html = engine.render(data)
+        except ServiceError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus(exc.status))
+            return
+        except Exception as exc:
+            logger.error("Report dashboard failed: %s", type(exc).__name__)
+            self._send_json({"error": "Internal error"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+        raw = html.encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", DASHBOARD_CONTENT_TYPE)
+        self.send_header("Content-Length", str(len(raw)))
+        self.send_header("Content-Security-Policy", REPORT_DASHBOARD_CSP)
+        self.send_header("Cache-Control", "no-store")
+        self._send_common_headers()
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def _send_engine_disabled(self) -> None:
+        self._send_json(
+            {"error": "Report models are not enabled on this server; start it with --report-models"},
+            status=HTTPStatus.SERVICE_UNAVAILABLE,
+        )
+
+    def _with_engine(self, action: Any) -> None:
+        engine: ReportEngine | None = getattr(self.server, "engine", None)
+        if engine is None:
+            self._send_engine_disabled()
+            return
+        try:
+            payload = action(engine)
+        except ServiceError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus(exc.status))
+            return
+        except Exception as exc:
+            logger.error("Report request failed: %s", type(exc).__name__)
+            self._send_json({"error": "Internal error"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+        self._send_json(payload)
 
     def _with_service(self, action: Any) -> None:
         service: QueryService | None = getattr(self.server, "service", None)
@@ -189,10 +273,15 @@ class NexDashRequestHandler(BaseHTTPRequestHandler):
     def _route_path(self) -> str:
         return self.path.split("?", 1)[0].split("#", 1)[0]
 
-    def _authorize(self) -> bool:
+    def _authorize(self, scope: str | None = None) -> Principal | None:
+        """Return the caller when its token is valid and holds ``scope``; otherwise answer 401 or 403."""
         auth: TokenAuth | None = getattr(self.server, "auth", None)
-        if auth is not None and auth.verify_headers(self.headers):
-            return True
+        principal = auth.identify_headers(self.headers) if auth is not None else None
+        if principal is not None:
+            if scope is None or principal.allows(scope):
+                return principal
+            self._send_json({"error": f"Forbidden: this token lacks scope '{scope}'"}, status=HTTPStatus.FORBIDDEN)
+            return None
         if auth is None or not auth.configured:
             message = f"API token not configured on the server; set {TOKEN_ENV}"
         else:
@@ -202,7 +291,7 @@ class NexDashRequestHandler(BaseHTTPRequestHandler):
             status=HTTPStatus.UNAUTHORIZED,
             extra_headers={"WWW-Authenticate": 'Bearer realm="nexdash"'},
         )
-        return False
+        return None
 
     def _read_json_body(self) -> Any | None:
         try:
@@ -358,14 +447,20 @@ def run_server(
     resolved_auth = auth if auth is not None else TokenAuth.from_env()
 
     server = ThreadingHTTPServer((host, port), NexDashRequestHandler)
+    engine = ReportEngine(executor) if report_models else None
     server.executor = executor  # type: ignore[attr-defined]
     server.service = service  # type: ignore[attr-defined]
-    server.mcp = MCPServer(service)  # type: ignore[attr-defined]
+    server.engine = engine  # type: ignore[attr-defined]
+    server.mcp = MCPServer(service, engine)  # type: ignore[attr-defined]
     server.auth = resolved_auth  # type: ignore[attr-defined]
 
     logger.info("NexDash server starting on %s:%d", host, server.server_address[1])
     logger.info("Database backend: %s (dialect: %s)", sanitize_db_url(resolved_db_url), executor.dialect_name)
     logger.info("Cubes: %s", ", ".join(service.registry.list_cubes()) or "none")
+    if engine is not None:
+        logger.info("Report engine: %s", ", ".join(sorted(engine.models)))
+    if resolved_auth.client_names:
+        logger.info("Client tokens: %s", ", ".join(resolved_auth.client_names))
     if resolved_auth.allow_anonymous:
         logger.warning("Anonymous access is enabled (%s); use it only for local demos.", ALLOW_ANONYMOUS_ENV)
     elif not resolved_auth.configured:
@@ -386,7 +481,8 @@ def run_mcp_stdio(
     executor = get_executor(db_url or get_db_url())
     try:
         service = build_service(executor, cubes_dir=cubes_dir, demo=demo, tier=tier, report_models=report_models)
-        MCPServer(service).serve_stdio()
+        engine = ReportEngine(executor) if report_models else None
+        MCPServer(service, engine).serve_stdio()
     finally:
         executor.close()
 

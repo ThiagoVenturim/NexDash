@@ -57,6 +57,15 @@ Send `Authorization: Bearer <token>` (or `X-API-Key: <token>`).
 | `POST /api/ask` | `{"question": "..."}` | Same as `/api/plan`, plus `question` |
 | `POST /api/query` | `{"sql": "SELECT ...", "params": {}}` | Guarded read-only SQL |
 | `POST /mcp` | JSON-RPC 2.0 | MCP over HTTP |
+| `GET /api/reports/models` | | Report models; see [REPORT_ENGINE.md](REPORT_ENGINE.md) |
+| `GET /api/reports/models/<name>` | | One report model with its request schema |
+| `POST /api/reports/run` | `{"model": ..., "parameters": {...}}` | Panel data and HTML dashboard |
+| `POST /api/reports/dashboard` | Same as `/api/reports/run` | The dashboard page (`text/html`) |
+
+Each endpoint needs a scope on the token: the operator token (`NEXDASH_API_TOKEN`)
+holds all of them, client tokens (`NEXDASH_CLIENT_<NAME>_TOKEN`) only those listed
+in `NEXDASH_CLIENT_<NAME>_SCOPES`. A valid token without the scope gets 403. See
+[REPORT_ENGINE.md](REPORT_ENGINE.md#authentication-and-scopes).
 
 Results are capped at 1000 rows. Errors come back as `{"error": "..."}` with a
 4xx or 5xx status; database and provider exceptions are reported generically.
@@ -77,6 +86,8 @@ Tools:
 - `nexdash_describe_cube` (`cube`)
 - `nexdash_query` (`plan`, a `QueryPlan` object)
 - `nexdash_ask` (`question`)
+- `nexdash_list_report_models`, `nexdash_describe_report_model` (`model`) and
+  `nexdash_run_report` (`model`, `parameters`, `output`, `locale`), with `--report-models`
 
 Stdio transport for clients that launch the server themselves. The process runs
 with the caller's privileges, so no token is checked there:
