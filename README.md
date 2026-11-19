@@ -80,6 +80,24 @@ under a strict Content-Security-Policy with `connect-src 'none'`:
 - **SELECT-Only Guard**: Enforces read-only parameterized `SELECT` / `WITH ... SELECT` queries (or semantic `QueryPlan` compilation) and blocks `DELETE`, `DROP`, `EXEC`, `xp_*`, and multi-statement queries.
 - **Lifecycle & Tokens**: Supports scheduled refresh cadences (`never`, `hourly`, `daily`, `weekly`) with fail-safe retention of the last good dataset, 30-day expiry with renewal tokens (`renewal_token`), and SHA-256 hashed one-time edit tokens (`ed_...`).
 
+## Data Source Connectors
+
+`nexdash.connectors` pulls work items from GitHub, Azure DevOps, Redmine, Jira, or any
+JSON REST API, normalizes them into one `work_items` table, and lets the semantic layer
+query it through the `work_items` cube. Credentials come only from environment variables
+or `.env`; requests stay on the configured host; rate limits are retried; GET responses
+are cached. See [docs/CONNECTORS.md](docs/CONNECTORS.md).
+
+```python
+from nexdash import QueryPlan, SQLiteExecutor
+from nexdash.connectors import GitHubConnector, sync_connector, work_items_cube
+
+with GitHubConnector("owner", "repo") as github, SQLiteExecutor("nexdash.db") as executor:
+    sync_connector(github, executor)  # reads NEXDASH_GITHUB_TOKEN
+    plan = QueryPlan(cube="work_items", dimensions=["state"], metrics=["item_count"])
+    print(executor.execute_plan(plan, work_items_cube()).rows)
+```
+
 ## Development
 
 ```bash
