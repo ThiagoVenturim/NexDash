@@ -60,6 +60,22 @@ for row in result:
     print(row)
 ```
 
+## MCP, REST and Web UI
+
+`nexdash` serves the semantic layer three ways, all backed by the same allowlist
+compiler: an MCP server (stdio with `nexdash --mcp`, or `POST /mcp`), a REST API
+(`/api/cubes`, `/api/plan`, `/api/ask`) and a minimal web UI at `/`. HTTP access
+requires the token in `NEXDASH_API_TOKEN` (environment or `.env`). Questions in
+natural language go through a `nexcoder-core` model tier, so Ollama, vLLM or paid
+models all work. `--demo` loads synthetic `sales`, `support` and `stock` cubes.
+
+```bash
+export NEXDASH_API_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+nexdash --demo --host 127.0.0.1 --port 8000   # then open http://127.0.0.1:8000/
+```
+
+See [docs/INTERFACES.md](docs/INTERFACES.md).
+
 ## Pluggable Database & Containers
 
 NexDash runs zero-config on SQLite and seamlessly adapts to external databases:
