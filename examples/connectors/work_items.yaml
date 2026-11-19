@@ -1,0 +1,65 @@
+name: work_items
+source: work_items
+description: Work items (issues, tickets, tasks, pull requests) collected by connectors
+dimensions:
+- name: source
+  type: string
+  description: Connector that produced the item (github, jira, ...)
+- name: project
+  type: string
+  description: Repository or project the item belongs to
+- name: item_id
+  type: string
+  description: Identifier of the item in the source tool
+- name: item_key
+  type: string
+  description: 'Human-readable key (repo#12, PROJ-7, #42)'
+- name: title
+  type: string
+  description: Title or summary
+- name: item_type
+  type: string
+  description: Issue, bug, task, pull_request, ...
+- name: status
+  type: string
+  description: Status name as shown in the source tool
+- name: state
+  type: string
+  description: 'Normalized state: open or closed'
+- name: assignee
+  type: string
+  description: Current assignee
+- name: author
+  type: string
+  description: Creator or reporter
+- name: priority
+  type: string
+  description: Priority name or number
+- name: labels
+  type: string
+  description: Comma-separated labels or tags
+- name: created_at
+  type: datetime
+  description: Creation time, ISO 8601 UTC
+- name: updated_at
+  type: datetime
+  description: Last update time, ISO 8601 UTC
+- name: closed_at
+  type: datetime
+  description: Close or resolution time, ISO 8601 UTC
+metrics:
+- name: item_count
+  aggregation: count
+  description: Number of work items
+- name: assignee_count
+  aggregation: count_distinct
+  column: assignee
+  description: Distinct assignees
+- name: avg_resolution_hours
+  aggregation: avg
+  column: resolution_hours
+  description: Average hours from creation to close
+- name: max_resolution_hours
+  aggregation: max
+  column: resolution_hours
+  description: Longest time from creation to close, in hours
