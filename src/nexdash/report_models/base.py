@@ -35,6 +35,7 @@ from nexdash.reports import (
 
 PanelKind = Literal["kpi", "line", "bar"]
 Unit = Literal["count", "hours", "minutes", "percent", "score"]
+Better = Literal["higher", "lower", "none"]
 
 MAX_KPIS = 5
 MAX_PARAM_CHARS = 200
@@ -119,7 +120,7 @@ class Panel:
     latest_snapshot: bool = False
     keep_order: bool = False
     highlight: str | None = None
-    lower_is_better: bool = False
+    better: Better = "higher"
     description: str = ""
 
     def __post_init__(self) -> None:

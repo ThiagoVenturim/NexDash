@@ -138,6 +138,7 @@ PANELS: tuple[Panel, ...] = (
         title="Tickets opened",
         plan=_plan(metrics=["ticket_count"]),
         y="ticket_count",
+        better="none",
     ),
     Panel(
         id="first_response",
@@ -146,7 +147,7 @@ PANELS: tuple[Panel, ...] = (
         plan=_plan(metrics=["avg_first_response_minutes"]),
         y="avg_first_response_minutes",
         unit="minutes",
-        lower_is_better=True,
+        better="lower",
     ),
     Panel(
         id="resolution_rate",
@@ -189,7 +190,7 @@ PANELS: tuple[Panel, ...] = (
         x="opened_month",
         y="avg_first_response_minutes",
         unit="minutes",
-        lower_is_better=True,
+        better="lower",
     ),
     Panel(
         id="csat_trend",
@@ -227,7 +228,7 @@ PANELS: tuple[Panel, ...] = (
         x="channel",
         y="avg_resolution_hours",
         unit="hours",
-        lower_is_better=True,
+        better="lower",
     ),
 )
 

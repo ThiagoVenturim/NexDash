@@ -79,7 +79,7 @@ def compare_text(
     previous: Any,
     unit: str = "count",
     *,
-    lower_is_better: bool = False,
+    better: str = "higher",
     locale: Locale = "en",
 ) -> str:
     """Describe the change against the previous period, for example ``up 12% vs. previous period (better)``."""
@@ -97,7 +97,9 @@ def compare_text(
     if abs(delta) < 0.5:
         return "no change vs. previous period"
     direction = "up" if delta > 0 else "down"
-    improved = (delta < 0) if lower_is_better else (delta > 0)
+    if better not in ("higher", "lower"):
+        return f"{direction} {amount} vs. previous period"
+    improved = (delta < 0) if better == "lower" else (delta > 0)
     return f"{direction} {amount} vs. previous period ({'better' if improved else 'worse'})"
 
 
@@ -334,7 +336,7 @@ def _kpi_card(result: PanelResult, locale: Locale) -> str:
         body = '<p class="empty">No data for the selected filters.</p>'
     else:
         compare = compare_text(
-            result.value, result.previous_value, panel.unit, lower_is_better=panel.lower_is_better, locale=locale
+            result.value, result.previous_value, panel.unit, better=panel.better, locale=locale
         )
         body = f'<p class="kpi-value">{_esc(format_number(result.value, panel.unit, locale))}</p>'
         if compare:

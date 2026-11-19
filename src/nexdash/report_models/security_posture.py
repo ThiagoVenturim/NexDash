@@ -115,7 +115,7 @@ PANELS: tuple[Panel, ...] = (
         plan=_plan(metrics=["open_findings"], filters=[_SEVERE]),
         y="open_findings",
         latest_snapshot=True,
-        lower_is_better=True,
+        better="lower",
     ),
     Panel(
         id="open_total",
@@ -124,7 +124,7 @@ PANELS: tuple[Panel, ...] = (
         plan=_plan(metrics=["open_findings"]),
         y="open_findings",
         latest_snapshot=True,
-        lower_is_better=True,
+        better="lower",
     ),
     Panel(
         id="gate_coverage",
@@ -143,7 +143,7 @@ PANELS: tuple[Panel, ...] = (
         plan=_plan(metrics=["outdated_dependencies"]),
         y="outdated_dependencies",
         latest_snapshot=True,
-        lower_is_better=True,
+        better="lower",
     ),
     Panel(
         id="gate_pass_rate",
@@ -167,7 +167,7 @@ PANELS: tuple[Panel, ...] = (
         latest_snapshot=True,
         keep_order=True,
         highlight="critical",
-        lower_is_better=True,
+        better="lower",
     ),
     Panel(
         id="severe_trend",
@@ -181,7 +181,7 @@ PANELS: tuple[Panel, ...] = (
         ),
         x="snapshot_date",
         y="open_findings",
-        lower_is_better=True,
+        better="lower",
     ),
     Panel(
         id="coverage_trend",
@@ -210,7 +210,7 @@ PANELS: tuple[Panel, ...] = (
         x="project",
         y="open_findings",
         latest_snapshot=True,
-        lower_is_better=True,
+        better="lower",
     ),
 )
 

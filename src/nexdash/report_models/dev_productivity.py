@@ -119,7 +119,7 @@ PANELS: tuple[Panel, ...] = (
         title="Pull requests still open",
         plan=_plan(metrics=["item_count"], filters=[_PR, PlanFilter(field="state", operator="eq", value="open")]),
         y="item_count",
-        lower_is_better=True,
+        better="lower",
         description="Opened in the period and not closed yet",
     ),
     Panel(
@@ -129,7 +129,7 @@ PANELS: tuple[Panel, ...] = (
         plan=_plan(metrics=["avg_review_hours"], filters=[_PR]),
         y="avg_review_hours",
         unit="hours",
-        lower_is_better=True,
+        better="lower",
     ),
     Panel(
         id="lead_time",
@@ -139,7 +139,7 @@ PANELS: tuple[Panel, ...] = (
         y="avg_lead_time_hours",
         unit="hours",
         period_field="closed_date",
-        lower_is_better=True,
+        better="lower",
         description="Hours from opening to merge",
     ),
     Panel(
@@ -178,7 +178,7 @@ PANELS: tuple[Panel, ...] = (
         y="avg_lead_time_hours",
         unit="hours",
         period_field="closed_date",
-        lower_is_better=True,
+        better="lower",
     ),
     Panel(
         id="throughput_person",
