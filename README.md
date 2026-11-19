@@ -2,6 +2,8 @@
 
 Dashboards and reports from natural-language questions, exposed over MCP and REST.
 
+Portuguese: [README.pt-BR.md](README.pt-BR.md).
+
 *(Formerly known as askdash during early development.)*
 
 nexdash answers questions through a semantic layer: cubes described in YAML, a
@@ -13,8 +15,10 @@ Status: early development.
 
 ## Semantic Layer Architecture
 
-The semantic layer prevents SQL injection and halluncinated queries by ensuring that
-the LLM only selects cubes and outputs structured parameters validated against a strict schema:
+The semantic layer prevents SQL injection and hallucinated queries by ensuring that
+the LLM only selects cubes and outputs structured parameters validated against a strict schema.
+See [docs/SEMANTIC_LAYER.md](docs/SEMANTIC_LAYER.md) for the cube and plan reference and
+[docs/SQL_GUARDS.md](docs/SQL_GUARDS.md) for every check between a model answer and the database. The parts:
 
 1. **Cube Models (YAML)**: Analytical entities declaring tables/views, dimensions, metrics with aggregations, allowed joins, and allowed filters.
 2. **Query Plan (Pydantic)**: Structured consultation request containing target cube, metrics, dimensions, filters, time ranges, ordering, and limits.
@@ -94,7 +98,9 @@ under a strict Content-Security-Policy with `connect-src 'none'`:
 
 - **SSRF Guard**: Rejects loopback, cloud metadata (`169.254.169.254`), private networks, and single-label internal hostnames, re-validating every redirect hop and stripping credentials across hosts.
 - **SELECT-Only Guard**: Enforces read-only parameterized `SELECT` / `WITH ... SELECT` queries (or semantic `QueryPlan` compilation) and blocks `DELETE`, `DROP`, `EXEC`, `xp_*`, and multi-statement queries.
-- **Lifecycle & Tokens**: Supports scheduled refresh cadences (`never`, `hourly`, `daily`, `weekly`) with fail-safe retention of the last good dataset, 30-day expiry with renewal tokens (`renewal_token`), and SHA-256 hashed one-time edit tokens (`ed_...`).
+- **Lifecycle & Tokens**: Supports scheduled refresh cadences (`never`, `hourly`, `daily`, `weekly`) with fail-safe retention of the last good dataset, 30-day expiry with renewal tokens (`renewal_token`), and edit tokens (`ed_...`) shown once and stored only as SHA-256 hashes.
+
+See [docs/LIVE_DASHBOARDS.md](docs/LIVE_DASHBOARDS.md).
 
 ## Data Source Connectors
 
@@ -149,6 +155,22 @@ Offline examples live in `examples/report_engine/`. See
 python examples/report_engine/rest_client.py   # REST client against a local server, synthetic data
 python examples/report_engine/mcp_client.py    # MCP client over stdio
 ```
+
+## Documentation
+
+| Page | Content |
+| --- | --- |
+| [SEMANTIC_LAYER.md](docs/SEMANTIC_LAYER.md) | Semantic layer vs text-to-SQL, cube YAML, query plans, natural-language questions |
+| [SQL_GUARDS.md](docs/SQL_GUARDS.md) | Checks on model output, the read-only SQL guard, known limits |
+| [LIVE_DASHBOARDS.md](docs/LIVE_DASHBOARDS.md) | Sources, secrets, SSRF guard, CSP sandbox, lifecycle and tokens |
+| [INTERFACES.md](docs/INTERFACES.md) | MCP, REST and web UI |
+| [DATABASE.md](docs/DATABASE.md) | Database URLs, drivers, containers |
+| [CONNECTORS.md](docs/CONNECTORS.md) | GitHub, Azure DevOps, Redmine, Jira and REST connectors |
+| [REPORT_MODELS.md](docs/REPORT_MODELS.md) | Ready-made report models |
+| [REPORT_ENGINE.md](docs/REPORT_ENGINE.md) | Report engine for other projects |
+| [COMPARISON.md](docs/COMPARISON.md) | Comparison with similar tools |
+
+The Python examples in the first three pages run offline in `tests/test_docs.py`.
 
 ## Development
 
