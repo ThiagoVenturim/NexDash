@@ -30,6 +30,7 @@ local demos only.
 | `--db-url` | `DB_URL` | Database URL (default in-memory SQLite) |
 | `--cubes DIR` | `NEXDASH_CUBES_DIR` | Directory of cube YAML files |
 | `--demo` | `NEXDASH_DEMO=1` | Load the synthetic demo cubes and data (SQLite only) |
+| `--report-models` | `NEXDASH_REPORT_MODELS=1` | Register the report model cubes (`dev_productivity`, `security_posture`, `support_metrics`); with `--demo`, load synthetic rows. See [REPORT_MODELS.md](REPORT_MODELS.md) |
 | `--tier` | `NEXDASH_LLM_TIER` | Model tier for questions: `small`, `medium`, `large` |
 | `--mcp` | | Serve MCP over stdio instead of HTTP |
 

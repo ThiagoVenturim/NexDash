@@ -290,8 +290,13 @@ def build_service(
     demo: bool = False,
     planner: PlanGenerator | None = None,
     tier: str = DEFAULT_TIER,
+    report_models: bool = False,
 ) -> QueryService:
-    """Assemble the registry (demo cubes and/or a cube directory) and the query service."""
+    """Assemble the registry (demo cubes and/or a cube directory) and the query service.
+
+    With ``report_models`` the cubes of the ready-made report models are registered too;
+    combined with ``demo`` their tables are filled with synthetic rows.
+    """
     registry = CubeRegistry()
     if demo:
         from nexdash.demo import load_demo_registry, seed_demo_data
@@ -304,6 +309,15 @@ def build_service(
             registry.register(demo_registry.get(name))
         counts = seed_demo_data(executor)
         logger.info("Loaded synthetic demo data: %s", ", ".join(f"{k}={v}" for k, v in counts.items()))
+    if report_models:
+        from nexdash.report_models import register_model_cubes
+
+        register_model_cubes(registry)
+        if demo:
+            from nexdash.report_models.synthetic import seed_model_data
+
+            counts = seed_model_data(executor)
+            logger.info("Loaded synthetic report model data: %s", ", ".join(f"{k}={v}" for k, v in counts.items()))
     if cubes_dir:
         for cube in load_cubes(cubes_dir).values():
             if cube.name in registry:
@@ -331,13 +345,16 @@ def run_server(
     auth: TokenAuth | None = None,
     planner: PlanGenerator | None = None,
     tier: str = DEFAULT_TIER,
+    report_models: bool = False,
 ) -> ThreadingHTTPServer:
     """Create the NexDash HTTP server (call ``serve_forever`` to start it)."""
     _configure_logging()
 
     resolved_db_url = db_url or get_db_url()
     executor = get_executor(resolved_db_url)
-    service = build_service(executor, cubes_dir=cubes_dir, demo=demo, planner=planner, tier=tier)
+    service = build_service(
+        executor, cubes_dir=cubes_dir, demo=demo, planner=planner, tier=tier, report_models=report_models
+    )
     resolved_auth = auth if auth is not None else TokenAuth.from_env()
 
     server = ThreadingHTTPServer((host, port), NexDashRequestHandler)
@@ -362,12 +379,13 @@ def run_mcp_stdio(
     cubes_dir: str | Path | None = None,
     demo: bool = False,
     tier: str = DEFAULT_TIER,
+    report_models: bool = False,
 ) -> None:
     """Serve the MCP tools over stdin/stdout until stdin closes."""
     _configure_logging()
     executor = get_executor(db_url or get_db_url())
     try:
-        service = build_service(executor, cubes_dir=cubes_dir, demo=demo, tier=tier)
+        service = build_service(executor, cubes_dir=cubes_dir, demo=demo, tier=tier, report_models=report_models)
         MCPServer(service).serve_stdio()
     finally:
         executor.close()
@@ -408,6 +426,13 @@ def main(args: list[str] | None = None) -> None:
         help="Load the synthetic sales, support and stock cubes with generated data (SQLite only)",
     )
     parser.add_argument(
+        "--report-models",
+        action="store_true",
+        default=_env_flag("NEXDASH_REPORT_MODELS"),
+        help="Register the report model cubes (dev_productivity, security_posture, support_metrics); "
+        "with --demo, also load synthetic rows",
+    )
+    parser.add_argument(
         "--tier",
         choices=TIERS,
         default=os.environ.get("NEXDASH_LLM_TIER", DEFAULT_TIER),
@@ -417,7 +442,13 @@ def main(args: list[str] | None = None) -> None:
 
     parsed = parser.parse_args(args)
     if parsed.mcp:
-        run_mcp_stdio(parsed.db_url, cubes_dir=parsed.cubes, demo=parsed.demo, tier=parsed.tier)
+        run_mcp_stdio(
+            parsed.db_url,
+            cubes_dir=parsed.cubes,
+            demo=parsed.demo,
+            tier=parsed.tier,
+            report_models=parsed.report_models,
+        )
         return
 
     server = run_server(
@@ -427,6 +458,7 @@ def main(args: list[str] | None = None) -> None:
         cubes_dir=parsed.cubes,
         demo=parsed.demo,
         tier=parsed.tier,
+        report_models=parsed.report_models,
     )
     try:
         server.serve_forever()

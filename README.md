@@ -114,6 +114,25 @@ with GitHubConnector("owner", "repo") as github, SQLiteExecutor("nexdash.db") as
     print(executor.execute_plan(plan, work_items_cube()).rows)
 ```
 
+## Report Models
+
+`nexdash.report_models` ships three parameterized reports, each a cube plus a dashboard
+template: development productivity (from the connectors), security posture (from
+security gate snapshots) and support metrics (from help desk tickets). Each takes a
+period, team and project, and renders a script-free HTML dashboard with KPIs, trends and
+rankings. See [docs/REPORT_MODELS.md](docs/REPORT_MODELS.md).
+
+```python
+from nexdash import SQLiteExecutor
+from nexdash.report_models import ModelParameters, get_model, render_dashboard
+from nexdash.report_models.synthetic import seed_model_data
+
+with SQLiteExecutor(":memory:") as executor:
+    seed_model_data(executor)  # synthetic rows; use the row converters for real data
+    run = get_model("security_posture").run(executor, ModelParameters(start="2026-04-01", end="2026-06-30"))
+    html = render_dashboard(run)
+```
+
 ## Development
 
 ```bash
