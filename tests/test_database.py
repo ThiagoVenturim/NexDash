@@ -281,9 +281,14 @@ def test_server_request_handler_mock():
 
     executor = DatabaseExecutor(engine)
 
+    from nexdash.auth import TokenAuth
+
+    token = "test-token-0123456789abcdef"
+
     class MockServer:
         def __init__(self, exec_inst):
             self.executor = exec_inst
+            self.auth = TokenAuth(token)
 
     class MockHandler(NexDashRequestHandler):
         def __init__(self, server, path, body=b"", method="GET"):
@@ -292,7 +297,7 @@ def test_server_request_handler_mock():
             self.command = method
             self.rfile = BytesIO(body)
             self.wfile = BytesIO()
-            self.headers = {"Content-Length": str(len(body))}
+            self.headers = {"Content-Length": str(len(body)), "Authorization": f"Bearer {token}"}
             self.client_address = ("127.0.0.1", 12345)
 
         def send_response(self, code, message=None):
