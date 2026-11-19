@@ -133,6 +133,23 @@ with SQLiteExecutor(":memory:") as executor:
     html = render_dashboard(run)
 ```
 
+## Shared Report Engine
+
+Other projects consume the report models through nexdash instead of duplicating them.
+`nexdash --report-models` exposes three operations over MCP (`nexdash_list_report_models`,
+`nexdash_describe_report_model`, `nexdash_run_report`) and REST (`/api/reports/models`,
+`/api/reports/run`, `/api/reports/dashboard`): pick a model, pass validated parameters
+(period, team, project; never SQL) and receive the panel data and a self-contained HTML
+dashboard. Each consuming project gets its own token with per-operation scopes
+(`NEXDASH_CLIENT_<NAME>_TOKEN` and `NEXDASH_CLIENT_<NAME>_SCOPES`, environment or `.env`).
+Offline examples live in `examples/report_engine/`. See
+[docs/REPORT_ENGINE.md](docs/REPORT_ENGINE.md).
+
+```bash
+python examples/report_engine/rest_client.py   # REST client against a local server, synthetic data
+python examples/report_engine/mcp_client.py    # MCP client over stdio
+```
+
 ## Development
 
 ```bash
