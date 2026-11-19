@@ -145,7 +145,9 @@ class MCPServer:
 
     def _call_tool(self, req_id: Any, params: dict[str, Any]) -> dict[str, Any]:
         name = params.get("name")
-        arguments = params.get("arguments") or {}
+        arguments = params.get("arguments")
+        if arguments is None:
+            arguments = {}
         if not isinstance(arguments, dict):
             return _error(req_id, INVALID_PARAMS, "arguments must be an object")
 
