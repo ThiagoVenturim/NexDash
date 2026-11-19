@@ -17,6 +17,7 @@ with a client-safe message. Database errors are logged by type only.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import logging
 from collections.abc import Callable, Mapping
@@ -140,6 +141,12 @@ class ReportEngine:
         for panel_id, error in run.errors.items():
             # The detail may hold SQL or driver text; it stays in the server log as a type name only.
             logger.warning("Panel '%s' of model '%s' failed: %s", panel_id, model.name, error.split(":", 1)[0])
+        if run.errors:
+            panels = [
+                dataclasses.replace(result, error=PANEL_ERROR_MESSAGE) if result.error else result
+                for result in run.panels
+            ]
+            run = dataclasses.replace(run, panels=panels)
         return parsed, run
 
     def run(self, request: RunRequest | Mapping[str, Any] | Any) -> dict[str, Any]:
