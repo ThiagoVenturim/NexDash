@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nexdash</title>
+  <link rel="stylesheet" href="/ui/style.css">
+  <script src="/ui/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>nexdash</h1>
+    <form id="token-form" autocomplete="off">
+      <label for="token">API token</label>
+      <input id="token" type="password" placeholder="NEXDASH_API_TOKEN" spellcheck="false">
+      <button type="submit">Connect</button>
+    </form>
+  </header>
+
+  <main>
+    <p id="status" role="status"></p>
+
+    <section id="ask-panel">
+      <h2>Ask a question</h2>
+      <form id="ask-form">
+        <input id="question" type="text" maxlength="2000" placeholder="Revenue by region in March 2026">
+        <button type="submit">Ask</button>
+      </form>
+    </section>
+
+    <section id="plan-panel">
+      <h2>Build a query</h2>
+      <form id="plan-form">
+        <label for="cube">Cube</label>
+        <select id="cube"></select>
+        <p id="cube-description"></p>
+        <div class="columns">
+          <fieldset>
+            <legend>Dimensions</legend>
+            <div id="dimensions"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Metrics</legend>
+            <div id="metrics"></div>
+          </fieldset>
+        </div>
+        <label for="limit">Row limit</label>
+        <input id="limit" type="number" min="1" max="1000" value="100">
+        <button type="submit">Run</button>
+      </form>
+    </section>
+
+    <section id="result-panel">
+      <h2>Result</h2>
+      <p id="result-meta"></p>
+      <div class="table-wrap"><table id="result"></table></div>
+      <details>
+        <summary>Compiled SQL</summary>
+        <pre id="sql"></pre>
+      </details>
+    </section>
+  </main>
+</body>
+</html>

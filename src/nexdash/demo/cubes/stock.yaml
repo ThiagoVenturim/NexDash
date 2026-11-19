@@ -1,0 +1,47 @@
+name: stock
+source: demo_stock
+description: Synthetic inventory snapshot per SKU and warehouse
+dimensions:
+  - name: sku
+    type: string
+    description: Stock keeping unit code
+  - name: product
+    type: string
+    description: Product name
+  - name: category
+    type: string
+    description: Product category (hardware, accessories, consumables)
+  - name: warehouse
+    type: string
+    description: Warehouse (central, coastal, inland)
+  - name: below_reorder
+    type: string
+    description: Whether on-hand units are below the reorder point (yes, no)
+metrics:
+  - name: sku_count
+    aggregation: count_distinct
+    column: sku
+    description: Distinct SKUs
+  - name: units_on_hand
+    aggregation: sum
+    column: on_hand
+    description: Units currently in stock
+  - name: stock_value
+    aggregation: sum
+    column: stock_value
+    description: Inventory value (on-hand units times unit cost)
+  - name: avg_unit_cost
+    aggregation: avg
+    column: unit_cost
+    description: Average unit cost
+filters:
+  - name: sku
+    operators: [eq, in]
+  - name: product
+    operators: [eq, neq, in, not_in, like]
+  - name: category
+    operators: [eq, neq, in, not_in]
+  - name: warehouse
+    operators: [eq, neq, in, not_in]
+  - name: below_reorder
+    operators: [eq]
