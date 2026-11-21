@@ -18,9 +18,9 @@ node_modules/
 # Local configuration and data
 .env
 *.env.local
-askdash.local.yaml
-.faccoder/
-.askdash/
+nexdash.local.yaml
+.nexcoder/
+.nexdash/
 *.sqlite
 *.db
 captures/

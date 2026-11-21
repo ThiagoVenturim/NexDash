@@ -3,14 +3,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "askdash"
+name = "nexdash"
 version = "0.1.0"
 description = "Dashboards and reports from natural-language questions through a semantic layer, exposed over MCP and REST."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
-  "faccoder-core",
+  "cryptography>=42.0",
+  "httpx>=0.27",
+  "nexcoder-core",
   "pydantic>=2.7",
   "pyyaml>=6.0",
   "sqlalchemy>=2.0",
@@ -18,9 +20,20 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.6"]
+postgres = ["psycopg>=3.1"]
+mysql = ["pymysql>=1.1"]
+mssql = ["pyodbc>=5.0"]
+all-dbs = [
+  "psycopg>=3.1",
+  "pymysql>=1.1",
+  "pyodbc>=5.0",
+]
+
+[project.scripts]
+nexdash = "nexdash.server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/askdash"]
+packages = ["src/nexdash"]
 
 [tool.ruff]
 line-length = 120
@@ -37,5 +50,6 @@ ignore = ["S101", "S105", "S106"]
 "scripts/**" = ["S603", "S607"]
 
 [tool.pytest.ini_options]
+pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"

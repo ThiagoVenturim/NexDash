@@ -1,5 +1,5 @@
-import askdash
+import nexdash
 
 
 def test_version():
-    assert askdash.__version__ == "0.1.0"
+    assert nexdash.__version__ == "0.1.0"

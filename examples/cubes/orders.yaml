@@ -1,0 +1,35 @@
+name: orders
+source: fact_orders
+description: Sales orders and transaction metrics
+dimensions:
+  - name: order_id
+    type: string
+  - name: status
+    type: string
+    description: Order status (completed, pending, cancelled)
+  - name: order_date
+    type: date
+    description: Date the order was placed
+metrics:
+  - name: order_count
+    aggregation: count
+    description: Total number of orders
+  - name: total_revenue
+    aggregation: sum
+    column: amount
+    description: Total revenue from orders
+  - name: avg_order_value
+    aggregation: avg
+    column: amount
+    description: Average order value
+joins:
+  - name: customers
+    target_table: dim_customers
+    relationship: many_to_one
+    source_key: customer_id
+    target_key: id
+filters:
+  - name: status
+    operators: [eq, neq, in]
+  - name: order_date
+    operators: [eq, gte, lte, between]

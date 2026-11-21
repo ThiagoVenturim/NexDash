@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexdash:latest
+    container_name: nexdash-app
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DB_URL=${DB_URL:-sqlite:////app/data/nexdash.db}
+      - NEXDASH_API_TOKEN=${NEXDASH_API_TOKEN:-}
+    volumes:
+      - app_data:/app/data
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: nexdash-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nexdash}
+      POSTGRES_USER: ${POSTGRES_USER:-nexdash}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nexdash_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexdash} -d ${POSTGRES_DB:-nexdash}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  app_data:
+  pg_data:

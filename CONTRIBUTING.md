@@ -1,4 +1,4 @@
-# Contributing to askdash
+# Contributing to nexdash
 
 Thank you for helping.
 
